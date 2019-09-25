@@ -17,8 +17,6 @@ function CL(args) {
   console.log(args);
 }
 
-const PAGE_LIMIT = 20;
-
 class App extends React.Component {
   constructor(props) {
     super(props);
@@ -29,7 +27,8 @@ class App extends React.Component {
       currentPage: 1,
       loading: false,
       sortBy: "none",
-      sortOrder: "asc"
+      sortOrder: "asc",
+      pageLimit: 20
     };
   }
   componentDidMount() {
@@ -59,11 +58,17 @@ class App extends React.Component {
   };
 
   getArticles = async () => {
-    const { articleIds, currentPage, diff = [] } = this.state;
-
+    const {
+      articleIds,
+      currentPage,
+      diff = [],
+      pageLimit = 0,
+      sortBy
+    } = this.state;
+    CL({ pageLimit, currentPage });
     this.setState({ loading: true });
-    const startIndex = (currentPage - 1) * PAGE_LIMIT;
-    const topArtcles = articleIds.slice(startIndex, startIndex + PAGE_LIMIT);
+    const startIndex = (currentPage - 1) * pageLimit;
+    const topArtcles = articleIds.slice(startIndex, startIndex + pageLimit);
     const promises = topArtcles.map(article =>
       axios.get(`https://hacker-news.firebaseio.com/v0/item/${article}.json`)
     );
@@ -76,14 +81,14 @@ class App extends React.Component {
       return { ...data, highlight: false };
     });
     this.setState({ articles: newArticles, loading: false }, () =>
-      this.onSort(this.state.sortBy)
+      this.onSort(sortBy)
     );
   };
 
   onSort = sortBy => {
     const { articles = [], sortOrder } = this.state;
 
-    let sortedArticles = articles;
+    let sortedArticles = [...articles];
 
     if (sortBy === "score") {
       sortedArticles = articles.sort((a, b) => a.score - b.score);
@@ -110,11 +115,12 @@ class App extends React.Component {
       articles = [],
       articleIds = [],
       sortBy,
-      sortOrder
+      sortOrder,
+      pageLimit
     } = this.state;
 
     return (
-      <div style={{ padding: 50 }}>
+      <div style={{ paddingLeft: 50, paddingRight: 50 }}>
         <Header
           loading={loading}
           sortOrder={sortOrder}
@@ -122,6 +128,10 @@ class App extends React.Component {
           totalLength={articleIds.length}
           onSortOrderChange={this.onSortOrderChange}
           onSort={this.onSort}
+          pageLimit={pageLimit}
+          setPageLimit={limit =>
+            this.setState({ pageLimit: limit }, this.getArticles)
+          }
           onPageChange={page =>
             this.setState({ currentPage: page }, this.getArticles)
           }
