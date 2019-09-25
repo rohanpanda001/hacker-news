@@ -1,10 +1,9 @@
 import React from "react";
 import "./App.css";
-import { Pagination, Tooltip } from "antd";
+import { Tooltip } from "antd";
 import {
   Divider,
   Typography,
-  CircularProgress,
   Card,
   CardContent,
   Grid
@@ -12,12 +11,13 @@ import {
 import { Star } from "@material-ui/icons";
 import axios from "axios";
 import moment from "moment";
+import Header from "./Header";
 
 function CL(args) {
   console.log(args);
 }
 
-const PAGE_LIMIT = 10;
+const PAGE_LIMIT = 20;
 
 class App extends React.Component {
   constructor(props) {
@@ -27,7 +27,9 @@ class App extends React.Component {
       articles: [],
       diff: [],
       currentPage: 1,
-      loading: false
+      loading: false,
+      sortBy: "none",
+      sortOrder: "asc"
     };
   }
   componentDidMount() {
@@ -35,7 +37,7 @@ class App extends React.Component {
   }
 
   getArticleIds = async () => {
-    const { articleIds = [] } = this.state;
+    const { articleIds = [], articles = [] } = this.state;
 
     this.setState({ loading: true });
     const response = await axios.get(
@@ -44,61 +46,86 @@ class App extends React.Component {
     const { data: newIds } = response;
     const oldIds = articleIds;
     const diff = newIds.filter(id => !oldIds.includes(id));
-    this.setState(
-      { articleIds: newIds, diff, loading: false },
-      this.getArticles
-    );
+    this.setState({ articleIds: newIds, diff, loading: false }, () => {
+      if (!diff.length) {
+        this.setState({
+          articles: articles.map(article => ({ ...article, highlight: false }))
+        });
+      } else {
+        this.getArticles();
+      }
+    });
     setTimeout(this.getArticleIds, 5000);
   };
 
   getArticles = async () => {
-    const { articleIds, currentPage, diff = [], articles = [] } = this.state;
-    if (diff.length) {
-      this.setState({ loading: true });
-      const startIndex = (currentPage - 1) * PAGE_LIMIT;
-      const topArtcles = articleIds.slice(startIndex, startIndex + PAGE_LIMIT);
-      const promises = topArtcles.map(article =>
-        axios.get(`https://hacker-news.firebaseio.com/v0/item/${article}.json`)
-      );
-      const responses = await Promise.all(promises);
-      const newArticles = responses.map(res => {
-        const data = res.data;
-        if (diff.includes(data.id)) {
-          return { ...data, highlight: true };
-        }
-        return { ...data, highlight: false };
-      });
-      this.setState({ articles: newArticles, loading: false });
-    } else {
-      this.setState({
-        articles: articles.map(article => ({ ...article, highlight: false }))
-      });
-    }
+    const { articleIds, currentPage, diff = [] } = this.state;
+
+    this.setState({ loading: true });
+    const startIndex = (currentPage - 1) * PAGE_LIMIT;
+    const topArtcles = articleIds.slice(startIndex, startIndex + PAGE_LIMIT);
+    const promises = topArtcles.map(article =>
+      axios.get(`https://hacker-news.firebaseio.com/v0/item/${article}.json`)
+    );
+    const responses = await Promise.all(promises);
+    const newArticles = responses.map(res => {
+      const data = res.data;
+      if (diff.includes(data.id)) {
+        return { ...data, highlight: true };
+      }
+      return { ...data, highlight: false };
+    });
+    this.setState({ articles: newArticles, loading: false }, () =>
+      this.onSort(this.state.sortBy)
+    );
   };
 
+  onSort = sortBy => {
+    const { articles = [], sortOrder } = this.state;
+
+    let sortedArticles = articles;
+
+    if (sortBy === "score") {
+      sortedArticles = articles.sort((a, b) => a.score - b.score);
+    } else {
+      sortedArticles = articles.sort((a, b) =>
+        a[sortBy] > b[sortBy] ? 1 : -1
+      );
+    }
+    if (sortOrder === "desc") {
+      sortedArticles.reverse();
+    }
+    this.setState({
+      articles: sortedArticles,
+      sortBy
+    });
+  };
+
+  onSortOrderChange = ({ key: sortOrder }) =>
+    this.setState({ sortOrder }, () => this.onSort(this.state.sortBy));
+
   render() {
-    const { loading, articles = [] } = this.state;
+    const {
+      loading,
+      articles = [],
+      articleIds = [],
+      sortBy,
+      sortOrder
+    } = this.state;
+
     return (
       <div style={{ padding: 50 }}>
-        <div style={{ display: "flex", marginBottom: 10 }}>
-          <div style={{ flex: 1, display: "flex" }}>
-            <Typography variant="h3" style={{ marginRight: 10 }}>
-              Hacker News
-            </Typography>
-            {loading && (
-              <CircularProgress size={20} style={{ alignSelf: "center" }} />
-            )}
-          </div>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <Pagination
-              defaultCurrent={1}
-              total={500}
-              onChange={page =>
-                this.setState({ currentPage: page }, () => this.getArticles())
-              }
-            />
-          </div>
-        </div>
+        <Header
+          loading={loading}
+          sortOrder={sortOrder}
+          sortBy={sortBy}
+          totalLength={articleIds.length}
+          onSortOrderChange={this.onSortOrderChange}
+          onSort={this.onSort}
+          onPageChange={page =>
+            this.setState({ currentPage: page }, this.getArticles)
+          }
+        />
         <Divider />
         <div
           style={{
@@ -131,9 +158,9 @@ class App extends React.Component {
                           <Typography
                             variant="h6"
                             style={{
-                              "white-space": "nowrap",
+                              whiteSpace: "nowrap",
                               overflow: "hidden",
-                              "text-overflow": "ellipsis"
+                              textOverflow: "ellipsis"
                             }}
                           >
                             <b>{title}</b>
@@ -148,7 +175,7 @@ class App extends React.Component {
                       <Tooltip title="Author" placement="left">
                         <Typography variant="subtitle1">{by}</Typography>
                       </Tooltip>
-                      <Tooltip title="Date" placement="left">
+                      <Tooltip title="Publish Date" placement="left">
                         <Typography variant="overline" display="block">
                           {moment(time).format("LLL")}
                         </Typography>
