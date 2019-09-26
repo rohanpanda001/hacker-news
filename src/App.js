@@ -17,6 +17,8 @@ function CL(args) {
   console.log(args);
 }
 
+const POLLING_INTERVAL = 1000 * 60 * 5;
+
 class App extends React.Component {
   constructor(props) {
     super(props);
@@ -54,7 +56,7 @@ class App extends React.Component {
         this.getArticles();
       }
     });
-    setTimeout(this.getArticleIds, 5000);
+    setTimeout(this.getArticleIds, POLLING_INTERVAL);
   };
 
   getArticles = async () => {
