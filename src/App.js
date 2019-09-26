@@ -179,7 +179,13 @@ class App extends React.Component {
                           </Typography>
                         </Tooltip>
                         {highlight && (
-                          <span style={{ color: "green" }}>
+                          <span
+                            style={{
+                              color: "green",
+                              alignSelf: "center",
+                              paddingLeft: 5
+                            }}
+                          >
                             <Star />
                           </span>
                         )}
