@@ -1,4 +1,4 @@
-## Run th commands
+## Run the commands
 
 ### `npm install`
 
