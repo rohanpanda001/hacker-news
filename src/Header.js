@@ -48,6 +48,7 @@ export default function Header({
         <div style={{ display: "flex" }}>
           <span style={{ alignSelf: "center" }}>Showing</span>
           <Input
+            maxLength={2}
             value={pageLimit}
             onChange={e => {
               const value = e.target.value;
